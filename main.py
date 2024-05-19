@@ -11,9 +11,9 @@ url_ref = "CookiesClickerGameBot"
 
 # Параметры подключения к базе данных MySQL
 db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'sksmel544332',
+    'host': 'https://portal.singlestore.com/organizations/7201eb28-5578-4258-bfd9-9acd5bc356f5/virtual-workspaces/580f4ded-ed69-4b92-a14d-3fbc6d33e083#access',
+    'user': 'serj_eleron',
+    'password': 'npPaWentMFadO9v5CXijZOl8zQvyqQYb',
     'database': 'app_clicker'
 }
 
