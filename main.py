@@ -8,6 +8,8 @@ DATABASE_PATH = 'database.db'
 user_id = 0
 url_ref = "CookiesClickerGameBot"
 
+init_db()
+
 def init_db():
   conn = sqlite3.connect(DATABASE_PATH)
   cursor = conn.cursor()
