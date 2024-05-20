@@ -1,4 +1,4 @@
-flet==0.1.22
+flet==0.22.0
 httpx==0.23.3
 pymongo==4.1.1
 
