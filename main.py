@@ -5,7 +5,7 @@ import uuid
 import os
 
 GIST_ID = os.getenv('GIST_ID')
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+GITHUB_TOKEN = os.getenv('G_TOKEN')
 GIST_URL = f'https://api.github.com/gists/{GIST_ID}'
 
 async def read_data():
