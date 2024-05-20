@@ -1,13 +1,11 @@
 import flet as ft
 import httpx
 import json
-from bson.objectid import ObjectId
+import uuid 
 
-# Вставьте свои данные сюда
-GIST_ID = 'f37cf7f5ebc9ed3d5db4bed2ee71d1f3'
-GITHUB_TOKEN = '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'
+GIST_ID = 'your_gist_id'
+GITHUB_TOKEN = 'your_github_token'
 GIST_URL = f'https://api.github.com/gists/{GIST_ID}'
-
 
 async def read_data():
     headers = {
@@ -27,7 +25,6 @@ async def read_data():
             print(f"Failed to fetch data: {response.status_code} {response.text}")
             return {}
 
-
 async def write_data(data):
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}"
@@ -45,15 +42,14 @@ async def write_data(data):
         response = await client.patch(GIST_URL, headers=headers, json=payload)
         return response.status_code == 200
 
-
 async def main(page: ft.Page):
     page.title = "Flet App with Gist DB"
 
-    user_id = str(ObjectId())
+    user_id = str(uuid.uuid4())  # Используем uuid для генерации уникального идентификатора
     user_data = await read_data()
 
     name_input = ft.TextField(label="Enter your name", autofocus=True)
-
+    
     async def enter_click(event):
         name = name_input.value
         user_data[user_id] = {"name": name}
@@ -76,7 +72,6 @@ async def main(page: ft.Page):
 
     name = user_data.get(user_id, {}).get("name")
     update_ui(name)
-
 
 if __name__ == "__main__":
     ft.app(target=main)
