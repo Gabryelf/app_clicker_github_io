@@ -1,57 +1,82 @@
 import flet as ft
-import asyncio
-from pymongo import MongoClient
+import httpx
+import json
 from bson.objectid import ObjectId
 
+# Вставьте свои данные сюда
+GIST_ID = 'f37cf7f5ebc9ed3d5db4bed2ee71d1f3'
+GITHUB_TOKEN = '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'
+GIST_URL = f'https://api.github.com/gists/{GIST_ID}'
 
 
-# Установите соединение с базой данных
-client = MongoClient('mongodb+srv://eleronsmarya:l2kKlf3xMrWVadQ9@cluster1.lgx1gsg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1')
-db = client['data_app']
+async def read_data():
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(GIST_URL, headers=headers)
+        if response.status_code == 200:
+            gist_content = response.json()
+            file_content = next(iter(gist_content['files'].values()))['content']
+            try:
+                return json.loads(file_content)
+            except json.JSONDecodeError:
+                print("Failed to decode JSON:", file_content)
+                return {}
+        else:
+            print(f"Failed to fetch data: {response.status_code} {response.text}")
+            return {}
 
 
-def get_or_create_user(session_id):
-    user_data = db.users.find_one({'session_id': session_id})
-    if not user_data:
-        # Создаем нового пользователя с уникальным ID сессии
-        user_data = {
-            'session_id': session_id,
-            'name': None
+async def write_data(data):
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}"
+    }
+    data_str = json.dumps(data, indent=2)
+    files = {
+        "data.txt": {
+            "content": data_str
         }
-        db.users.insert_one(user_data)
-    return user_data
+    }
+    payload = {
+        "files": files
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.patch(GIST_URL, headers=headers, json=payload)
+        return response.status_code == 200
 
-def save_user_name(session_id, name):
-    db.users.update_one({'session_id': session_id}, {'$set': {'name': name}})
 
 async def main(page: ft.Page):
-    page.title = "MongoDB Flet App"
+    page.title = "Flet App with Gist DB"
 
-    # Инициализация переменной сессии
-    session_id = str(ObjectId())
+    user_id = str(ObjectId())
+    user_data = await read_data()
 
-    user_data = get_or_create_user(session_id)
+    name_input = ft.TextField(label="Enter your name", autofocus=True)
 
-    if user_data['name']:
-        # Если имя пользователя уже сохранено, показываем приветствие
-        greeting = ft.Text(f"Welcome back, {user_data['name']}!")
-        page.add(greeting)
-    else:
-        # Если имя пользователя не сохранено, запрашиваем его
-        name_input = ft.TextField(label="Enter your name", autofocus=True)
-        enter_button = ft.TextButton(text="Enter", on_click=lambda e: enter_click(e, name_input, session_id, page))
-        page.add(name_input, enter_button)
+    async def enter_click(event):
+        name = name_input.value
+        user_data[user_id] = {"name": name}
+        success = await write_data(user_data)
+        if success:
+            update_ui(name)
+        else:
+            page.add(ft.Text("Error writing data!"))
+            page.update()
 
-    await page.update()
+    def update_ui(name=""):
+        page.controls.clear()
+        if name:
+            greeting = ft.Text(f"Welcome back, {name}!")
+            page.add(greeting)
+        else:
+            enter_button = ft.TextButton(text="Enter", on_click=enter_click)
+            page.add(name_input, enter_button)
+        page.update()
 
-async def enter_click(event, name_input, session_id, page):
-    # Сохраняем имя пользователя в базе данных
-    save_user_name(session_id, name_input.value)
-    # Обновляем страницу, показываем приветствие
-    page.controls.clear()
-    greeting = ft.Text(f"Welcome, {name_input.value}!")
-    page.add(greeting)
-    await page.update()
+    name = user_data.get(user_id, {}).get("name")
+    update_ui(name)
+
 
 if __name__ == "__main__":
-    ft.app(target=main, view=ft.WEB_BROWSER)
+    ft.app(target=main)
