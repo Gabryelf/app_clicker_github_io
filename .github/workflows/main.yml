@@ -46,13 +46,13 @@ jobs:
 
     - name: Flet Build Web
       run: |
-            echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}, USER: ${GITHUB_REPOSITORY%/*}, PROJECT_BASE_URL: ${GITHUB_REPOSITORY#*/}"
-            flet build web --base-url ${GITHUB_REPOSITORY#*/} --route-url-strategy hash
+        echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}, USER: ${GITHUB_REPOSITORY%/*}, PROJECT_BASE_URL: ${GITHUB_REPOSITORY#*/}"
+        flet build web --base-url ${GITHUB_REPOSITORY#*/} --route-url-strategy hash
 
     - name: Upload Artifact
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
-        name: web-build-artifact  # the name of the artifact
+        name: web-build-artifact
         path: build/web
 
   deploy:
@@ -80,3 +80,6 @@ jobs:
         uses: actions/deploy-pages@v4.0.5
         with:
           artifact_name: web-build-artifact
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
