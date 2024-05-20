@@ -4,11 +4,9 @@ import json
 import uuid
 import os
 
-GIST_ID = 'f37cf7f5ebc9ed3d5db4bed2ee71d1f3'
-GITHUB_TOKEN = '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'
-
+GIST_ID = os.getenv('GIST_ID')
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
 GIST_URL = f'https://api.github.com/gists/{GIST_ID}'
-
 
 async def read_data():
     headers = {
