@@ -20,7 +20,7 @@ on:
 concurrency:
   group: "pages"
   cancel-in-progress: false
-
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,10 +29,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Python 3.11.1
+    - name: Setup Python 3.12.2
       uses: actions/setup-python@v2
       with:
-        python-version: 3.11.1
+        python-version: 3.12.2
 
     - name: Install Python Dependencies
       run: |
@@ -48,6 +48,7 @@ jobs:
       run: |
             echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}, USER: ${GITHUB_REPOSITORY%/*}, PROJECT_BASE_URL: ${GITHUB_REPOSITORY#*/}"
             flet build web --base-url ${GITHUB_REPOSITORY#*/} --route-url-strategy hash
+
     - name: Upload Artifact
       uses: actions/upload-pages-artifact@v3
       with:
@@ -68,14 +69,15 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
+      
     steps:
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
+        
       - name: Deploy to GitHub Pages 🚀
         if: github.event_name == 'push'  # deploy only on push
         id: deployment
         uses: actions/deploy-pages@v4.0.5
         with:
           artifact_name: web-build-artifact
+        
