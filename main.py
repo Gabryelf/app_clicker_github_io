@@ -1,101 +1,60 @@
 import flet as ft
 import asyncio
-import mysql.connector
 from typing import List, Tuple
+import pymongo
+from pymongo import MongoClient
 
-
-DATABASE_PATH = 'database.db'
 user_id = 0
 url_ref = "CookiesClickerGameBot"
 
-
-# Параметры подключения к базе данных MySQL
-db_config = {
-    'host': '',
-    'user': '',
-    'password': '',
-    'database': ''
-}
+# Установите соединение с базой данных
+cluster = MongoClient('mongodb+srv://eleronsmarya:eleronsmarya@cluster1.lgx1gsg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1')
+collection = cluster.app_clicker.clicker_users
 
 def init_db():
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        user_id INT PRIMARY KEY,
-        score FLOAT DEFAULT 0,
-        energy INT DEFAULT 50,
-        token INT DEFAULT 0,
-        referrer_id INT
-    )
-    ''')
-    conn.commit()
-    conn.close()
+    collection.users.create_index([('user_id', pymongo.ASCENDING)], unique=True)
 
 def get_game_data(user_id):
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute('SELECT score, energy FROM users WHERE user_id = %s', (user_id,))
-    data = cursor.fetchone()
-    conn.close()
-    if data:
-        return data['score'], data['energy']
+    user_data = collection.users.find_one({'user_id': user_id})
+    if user_data:
+        return user_data['score'], user_data['energy']
     else:
         return 0.0, 50
 
 def update_game_data(user_id, score, energy):
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute(
-        '''
-        INSERT INTO users (user_id, score, energy) VALUES (%s, %s, %s)
-        ON DUPLICATE KEY UPDATE score = VALUES(score), energy = VALUES(energy)
-        ''', (user_id, score, energy))
-    conn.commit()
-    conn.close()
+    collection.users.update_one(
+        {'user_id': user_id},
+        {'$set': {'score': score, 'energy': energy}},
+        upsert=True
+    )
 
 async def save_user_id(user_id: int, referrer_id: int = None):
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute(
-        'INSERT IGNORE INTO users (user_id, score, energy, token, referrer_id) VALUES (%s, %s, %s, %s, %s)',
-        (user_id, 0.0, 50, 0, referrer_id))
-    conn.commit()
-    conn.close()
+    collection.users.insert_one({
+        'user_id': user_id,
+        'score': 0.0,
+        'energy': 50,
+        'token': 0,
+        'referrer_id': referrer_id
+    })
 
 def add_tokens(user_id: int, tokens: int):
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute('UPDATE users SET token = token + %s WHERE user_id = %s',
-                   (tokens, user_id))
-    conn.commit()
-    conn.close()
+    collection.users.update_one(
+        {'user_id': user_id},
+        {'$inc': {'token': tokens}}
+    )
 
 def get_all_user_ids():
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT user_id FROM users")  # Получаем все уникальные user_id из базы данных
-    user_ids = [row[0] for row in cursor.fetchall()]  # Преобразуем результат запроса в список
-    conn.close()
+    user_ids = collection.users.distinct('user_id')
     return user_ids
 
 async def get_top_users(n: int) -> List[Tuple[int, float]]:
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor()
-    cursor.execute(
-        '''
-        SELECT user_id, score
-        FROM users
-        ORDER BY score DESC
-        LIMIT %s
-        ''', (n,))
-    top_users = cursor.fetchall()
-    conn.close()
-    return top_users
+    top_users = list(collection.users.find().sort('score', -1).limit(n))
+    return [(user['user_id'], user['score']) for user in top_users]
 
 
 async def main(page: ft.Page) -> None:
     init_db()
+
     page.bgcolor = "#000000"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -120,27 +79,6 @@ async def main(page: ft.Page) -> None:
                 if energy > 50:  # Если энергия превышает максимальное значение, устанавливаем ее равной максимальному значению
                     energy = 50
                 update_game_data(user_id, score, energy)  # Обновляем данные игры в базе данных
-
-    async def submit_click(event):
-        user_id = int(user_id_input.value)  # Обновляем user_id с новым значением из поля ввода
-        user_id_holder["value"] = user_id  # Сохраняем новое значение user_id
-        # Используем user_id для получения данных игры из базы данных
-        score, energy = get_game_data(user_id)
-        print("Score:", score, "Energy:", energy)  # Отладочное сообщение
-        score_text.value = f"Score: {score}"
-        energy_text.value = f"Energy: {energy}"
-
-        # Удаляем элементы ввода user_id и кнопку "Submit"
-        page.remove(user_id_input)
-        page.remove(submit_button)
-
-        # Добавляем текстовые элементы на страницу
-        page.add(score_text, energy_text)
-
-        # Обновляем страницу с новыми данными
-        await page.update()
-
-    submit_button.on_click = submit_click
 
     # Добавляем элементы ввода на страницу
     page.add(user_id_input, submit_button)
